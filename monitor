@@ -1,0 +1,43 @@
+#!/bin/bash
+
+pidfile="/var/run/$MONITOR_NAME.$1..$2.pid"
+
+if [ -f $pidfile ]
+    then
+    kill -9 -`cat $pidfile` > /dev/null 2>&1
+fi
+
+echo "$$" > $pidfile
+
+node_ip=`echo $1 |sed 's/::ffff://'`
+node_port=$2
+
+getscript () {
+    echo 'GET /adfs/ls/idpinitiatedsignon.aspx HTTP/1.1'
+    echo 'Host: adfs.open-techs.com'
+    echo ''
+    while sleep 0; do
+        echo 'quit\n'
+    done
+}
+
+docurl () {
+    IFS=$'\n'
+    arr=($(getscript | openssl s_client -connect ${node_ip}:${node_port} -cipher 'ECDHE-RSA-AES256-SHA' -servername 'adfs.open-techs.com' 2>/dev/nul |grep -E '200 OK'))
+    unset IFS
+}
+
+docurl
+
+#echo ${arr[0]}
+
+if [ -n "${arr[0]}" ]
+then
+    # Remove the pidfile before the script echoes anything to stdout and is killed by bigd
+    rm -f $pidfile
+    echo "up"
+fi
+
+# Remove the pidfile before the script ends
+rm -f $pidfile
+
